@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
+import { getApiBaseUrl } from './config';
 
 // Constants for theming and API
 const THEME = {
@@ -11,7 +12,7 @@ const THEME = {
   lightText: '#1f2937'
 };
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = getApiBaseUrl();
 
 // PUBLIC_INTERFACE
 function App() {
@@ -53,15 +54,19 @@ function App() {
   async function fetchNotes() {
     setLoading(true);
     setErrorMsg('');
+    const url = `${API_BASE_URL}/notes`;
     try {
-      const res = await fetch(`${API_BASE_URL}/notes`, { headers: { Accept: 'application/json' } });
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) {
-        throw new Error(`Failed to load notes (${res.status})`);
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `Failed to load notes (${res.status})`);
       }
       const data = await res.json();
       setNotes(Array.isArray(data) ? data : []);
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to load notes');
+      const msg = (err && err.message) ? err.message : 'Failed to load notes';
+      // Provide hint for common CORS/network issues
+      setErrorMsg(`${msg}. Please ensure the backend is reachable at ${API_BASE_URL} and CORS allows http://localhost:3000.`);
     } finally {
       setLoading(false);
     }
@@ -75,7 +80,8 @@ function App() {
      */
     setErrorMsg('');
     try {
-      const res = await fetch(`${API_BASE_URL}/notes`, {
+      const url = `${API_BASE_URL}/notes`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: headersJson,
         body: JSON.stringify(payload)
@@ -86,7 +92,8 @@ function App() {
       }
       await fetchNotes();
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to create note');
+      const msg = err?.message || 'Failed to create note';
+      setErrorMsg(`${msg}. API: ${API_BASE_URL}`);
       throw err;
     }
   }
@@ -100,7 +107,8 @@ function App() {
      */
     setErrorMsg('');
     try {
-      const res = await fetch(`${API_BASE_URL}/notes/${id}`, {
+      const url = `${API_BASE_URL}/notes/${id}`;
+      const res = await fetch(url, {
         method: 'PUT',
         headers: headersJson,
         body: JSON.stringify(payload)
@@ -111,7 +119,8 @@ function App() {
       }
       await fetchNotes();
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to update note');
+      const msg = err?.message || 'Failed to update note';
+      setErrorMsg(`${msg}. API: ${API_BASE_URL}`);
       throw err;
     }
   }
@@ -124,14 +133,16 @@ function App() {
      */
     setErrorMsg('');
     try {
-      const res = await fetch(`${API_BASE_URL}/notes/${id}`, { method: 'DELETE' });
+      const url = `${API_BASE_URL}/notes/${id}`;
+      const res = await fetch(url, { method: 'DELETE' });
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Failed to delete note (${res.status})`);
       }
       await fetchNotes();
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to delete note');
+      const msg = err?.message || 'Failed to delete note';
+      setErrorMsg(`${msg}. API: ${API_BASE_URL}`);
       throw err;
     }
   }
